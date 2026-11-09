@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Standalone CLI so the mouth is usable without a dsh restart.
 import { call, ensureDaemon, qs } from '../lib/client.mjs'
-import { CONFIG_PATH, DEFAULT_PORT, loadConfig, saveConfig } from '../lib/shared.mjs'
+import { CONFIG_PATH, DEFAULT_PORT, loadConfig, saveConfig, zhipuFor } from '../lib/shared.mjs'
 
 const argv = process.argv.slice(2)
 const cmd = argv[0] ?? 'help'
@@ -34,7 +34,7 @@ try {
       minimax: !!(t.minimax && t.minimax.apiKey),
       openai: !!(t.openai && t.openai.apiKey),
       azure: !!(t.azure && t.azure.apiKey),
-      glm: !!(t.glm && t.glm.apiKey),
+      glm: !!zhipuFor(cfg).apiKey,
       edge: true,
     }
     const order = t.provider === 'openai'

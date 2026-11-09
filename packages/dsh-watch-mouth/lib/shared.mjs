@@ -93,6 +93,9 @@ export function defaultConfig() {
       voice: 'female',
       speed: 1.1,
       timeoutMs: 60000,
+      // glm-tts (Zhipu BigModel) takes model / voice / speed from above and its
+      // key from here. See zhipuFor() for the environment fallback.
+      glm: { apiKey: '', baseUrl: 'https://open.bigmodel.cn/api/paas/v4' },
       azure: { apiKey: '', region: 'eastasia', format: 'audio-24khz-48kbitrate-mono-mp3' },
       // MiniMax T2A v2: hex-PCM over SSE, same streaming shape as glm-tts.
       minimax: {
@@ -180,6 +183,7 @@ export function loadConfig() {
         ...base.tts,
         ...(user.tts ?? {}),
         azure: { ...base.tts.azure, ...((user.tts ?? {}).azure ?? {}) },
+        glm: { ...base.tts.glm, ...((user.tts ?? {}).glm ?? {}) },
         openai: { ...base.tts.openai, ...((user.tts ?? {}).openai ?? {}) },
         minimax: { ...base.tts.minimax, ...((user.tts ?? {}).minimax ?? {}) },
       },
@@ -188,6 +192,19 @@ export function loadConfig() {
     log('config load failed, using defaults: ' + String(e && e.message))
     return base
   }
+}
+
+// The key and endpoint glm-tts is called with.
+//
+// tts.glm.apiKey first. ZHIPU_API_KEY / GLM_API_KEY (the key the eyes already
+// use for vision) only when the provider is pinned to 'glm': under 'auto' that
+// key would otherwise put glm-tts ahead of the free Edge voice and start billing
+// a vision key for speech nobody asked for.
+export function zhipuFor(cfg) {
+  const t = (cfg && cfg.tts) || {}
+  const g = t.glm || {}
+  const env = t.provider === 'glm' ? process.env.ZHIPU_API_KEY || process.env.GLM_API_KEY || '' : ''
+  return { apiKey: g.apiKey || env, baseUrl: g.baseUrl || 'https://open.bigmodel.cn/api/paas/v4' }
 }
 
 export function saveConfig(cfg) {

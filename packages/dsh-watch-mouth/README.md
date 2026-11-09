@@ -54,6 +54,7 @@ npx mouth stop
 
     tts.provider        minimax | openai | azure | glm | edge
     tts.minimax.*       key / voiceId / speed / pitch / emotion
+    tts.glm.apiKey      glm-tts 的 key（provider 设成 glm 时，不填也会读 ZHIPU_API_KEY）
     output.deviceName   钉到某个播放设备（名字，不是序号）
 
 ## 已知坑

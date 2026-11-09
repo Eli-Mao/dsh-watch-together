@@ -8,12 +8,12 @@
 import http from 'node:http'
 import { writeFileSync } from 'node:fs'
 import { Speaker } from './tts.mjs'
-import { DEFAULT_PORT, PID_PATH, loadConfig, log } from './shared.mjs'
+import { DEFAULT_PORT, PID_PATH, loadConfig, log, zhipuFor } from './shared.mjs'
 
 const cfg = loadConfig()
 const port = Number(process.env.DSH_MOUTH_PORT || cfg.port || DEFAULT_PORT)
 
-const speaker = new Speaker(cfg.voice, cfg.prosody, { tts: cfg.tts, zhipu: {}, output: cfg.output })
+const speaker = new Speaker(cfg.voice, cfg.prosody, { tts: cfg.tts, zhipu: zhipuFor(cfg), output: cfg.output })
 
 // Every caller is supposed to hand over ONE short spoken line (the tool
 // descriptions say 40 characters). Nothing enforced it, and a 400 character
