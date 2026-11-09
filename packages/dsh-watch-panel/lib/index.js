@@ -10,7 +10,7 @@
 // the longest prefix, a plugin under /api/<name> never gets a turn. A distinct
 // prefix sidesteps that handshake entirely.
 import { execFile } from 'node:child_process'
-import { existsSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 import { homedir } from 'node:os'
@@ -20,6 +20,10 @@ export const name = 'dsh-watch-panel'
 export const inject = ['webServer']
 
 const BASE = '/dsh-watch'
+
+// This file's own directory (lib/): the /client.js route below serves the
+// browser half from beside it.
+const HERE = dirname(fileURLToPath(import.meta.url))
 
 // Where the sibling plugins actually live.
 //
