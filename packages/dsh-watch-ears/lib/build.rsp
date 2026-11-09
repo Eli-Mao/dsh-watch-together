@@ -1,11 +1,12 @@
+# Paths are relative to the package root: run "csc @lib/build.rsp" from there.
 /nologo
 /target:library
 /langversion:5
 /utf8output
-/out:"E:\dsh-plugins\dsh-ears\lib\net\Ears.dll"
+/out:"lib\net\Ears.dll"
 /reference:"C:\Program Files (x86)\Reference Assemblies\Microsoft\Framework\.NETFramework\v4.8\Facades\netstandard.dll"
-/reference:"E:\dsh-plugins\dsh-ears\lib\net\NAudio.Core.dll"
-/reference:"E:\dsh-plugins\dsh-ears\lib\net\NAudio.Wasapi.dll"
-/reference:"E:\dsh-plugins\dsh-ears\lib\net\NAudio.WinMM.dll"
-/reference:"E:\dsh-plugins\dsh-ears\lib\net\NAudio.dll"
-"E:\dsh-plugins\dsh-ears\lib\Ears.cs"
+/reference:"lib\net\NAudio.Core.dll"
+/reference:"lib\net\NAudio.Wasapi.dll"
+/reference:"lib\net\NAudio.WinMM.dll"
+/reference:"lib\net\NAudio.dll"
+"lib\Ears.cs"

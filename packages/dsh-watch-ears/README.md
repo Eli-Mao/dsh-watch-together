@@ -92,7 +92,8 @@ Two things that bit us, both fixed:
 
     csc @lib/build.rsp
 
-The response file references the .NET 4.8 netstandard facade, without which the
+Run it from the package root: the paths in the response file are relative to
+it. The response file references the .NET 4.8 netstandard facade, without which the
 netstandard2.0 NAudio assemblies cannot be referenced.
 
 ## Config
