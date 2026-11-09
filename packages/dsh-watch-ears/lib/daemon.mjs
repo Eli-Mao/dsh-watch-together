@@ -55,7 +55,7 @@ async function hearOnce(source, seconds, prompt, cutMs) {
       return { source, seconds, peak: r.peak, silent: true, text: '' }
     }
     const a = await transcribe(cfg, path, { prompt })
-    return { source, seconds, peak: Number(r.peak.toFixed(4)), bytes: r.bytes, text: a.text, ms: a.ms, silent: false, wallMs, audioMs: r.ms, speechMs: r.speechMs, silenceCut: r.silenceCut, noiseFloor: Number((r.noiseFloor || 0).toFixed(5)), threshold: Number((r.threshold || 0).toFixed(5)) }
+    return { source, seconds, peak: Number(r.peak.toFixed(4)), bytes: r.bytes, text: a.text, ms: a.ms, error: a.error, silent: false, wallMs, audioMs: r.ms, speechMs: r.speechMs, silenceCut: r.silenceCut, noiseFloor: Number((r.noiseFloor || 0).toFixed(5)), threshold: Number((r.threshold || 0).toFixed(5)) }
   } finally {
     rec.stop()
     try { const { rmSync } = await import('node:fs'); rmSync(path, { force: true }) } catch { /* best effort */ }
@@ -290,7 +290,7 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === '/transcribe') {
       if (!q.path) throw new Error('need path')
       const a = await transcribe(cfg, q.path, q.prompt ? { prompt: q.prompt } : {})
-      return send(res, 200, { ok: !a.error, text: a.text, ms: a.ms, backend: getBackend(cfg), used: a.cloud || (a.local ? 'local' : 'cloud'), local: !!a.local })
+      return send(res, 200, { ok: !a.error, error: a.error, text: a.text, ms: a.ms, backend: getBackend(cfg), used: a.cloud || (a.local ? 'local' : 'cloud'), local: !!a.local })
     }
     if (url.pathname === '/heard') {
       const lines = listener.recent(q.seconds)

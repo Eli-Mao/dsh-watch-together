@@ -112,6 +112,9 @@ export class Listener {
             prompt: this.tail.get(source),
             fallbackVad: spoke && (Number(r.speechMs) || 0) >= minSpeechMs,
           })
+          // cloud-sf reports a failure as {text:'', error} rather than throwing;
+          // without this it was counted as junk and status showed errors=0.
+          if (a.error) throw new Error(a.error)
           this.stats.transcribed += 1
           this.stats.asrMs += a.ms
           if (useful(a.text) && !this.isRepeat(source, a.text)) {

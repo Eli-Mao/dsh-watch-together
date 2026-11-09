@@ -261,7 +261,11 @@ export function backendReport(cfg) {
   const wanted = activeBackend || cfg.asr.backend || 'auto'
   const probe = probeLocal(cfg)
   const runtime = getBackend(cfg)
-  const keySetCloud = String(cfg.asr.apiKey || '').trim() !== ''
+  // cloud-sf is keyed by asr.siliconflow.apiKey; asr.apiKey belongs to the
+  // other vendor and says nothing about whether SiliconFlow can be called.
+  const sf = runtime === 'cloud-sf'
+  const keyName = sf ? 'asr.siliconflow.apiKey' : 'asr.apiKey'
+  const keySetCloud = String((sf ? (cfg.asr.siliconflow || {}).apiKey : cfg.asr.apiKey) || '').trim() !== ''
   return {
     wanted,
     running: runtime,
@@ -272,7 +276,7 @@ export function backendReport(cfg) {
       ? 'using the local model (no API cost)'
       : keySetCloud
         ? 'using the vendor API (per minute cost)'
-        : 'using the vendor API but asr.apiKey is EMPTY - transcription will fail',
+        : 'using the vendor API but ' + keyName + ' is EMPTY - ' + (sf ? 'every segment falls back to the local model' : 'transcription will fail'),
   }
 }
 
@@ -298,17 +302,28 @@ export async function transcribe(cfg, wavPath, opts = {}) {
   const backend = getBackend(cfg)
 
   if (backend === 'cloud-sf') {
+    let sfError = 'no text'
     try {
       const out = await transcribeSiliconFlow(cfg, wavPath, opts)
       if (out && out.text) return out
       if (out && out.empty) return out
     } catch (e) {
-      log('siliconflow asr failed: ' + String(e && e.message).slice(0, 120))
+      sfError = String(e && e.message).slice(0, 160)
+      log('siliconflow asr failed: ' + sfError.slice(0, 120))
     }
     // Never leave the user deaf: fall back to local if the network or key fails.
-    const out = await localWhisper.transcribe(cfg, wavPath, opts)
+    // The local path can also throw (worker start timeout); fold that into the
+    // same result so the SiliconFlow error is not lost with it.
+    let out
+    try {
+      out = await localWhisper.transcribe(cfg, wavPath, opts)
+    } catch (e) {
+      out = { error: String(e && e.message).slice(0, 160) }
+    }
     if (!out.error) return { text: out.text, ms: out.ms, bytes: 0, local: true, fallback: true }
-    return { text: '', ms: 0, error: out.error || 'all backends failed' }
+    // Both failed: say so for both. The local error alone ("python not found")
+    // hides the failure of the backend the user actually picked.
+    return { text: '', ms: 0, error: 'siliconflow: ' + sfError + '; local: ' + (out.error || 'failed') }
   }
 
   if (backend === 'local') {

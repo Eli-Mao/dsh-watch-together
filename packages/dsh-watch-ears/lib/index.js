@@ -45,7 +45,16 @@ const hearNowTool = {
     },
     required: [],
   },
-  output: { schema: OUTPUT_SCHEMA, render: (_a, v) => text(v && v.text ? '[' + v.source + '] ' + v.text : '(' + (v && v.source) + ' 静音，peak ' + (v && v.peak) + ')') },
+  output: {
+    schema: OUTPUT_SCHEMA,
+    render: (_a, v) => {
+      if (v && v.text) return text('[' + v.source + '] ' + v.text)
+      // Speech was there but could not be transcribed: that is a failure, not
+      // silence, and calling it silence sends the reader after the microphone.
+      if (v && v.error) return text('(' + v.source + ' 识别失败：' + v.error + ')')
+      return text('(' + (v && v.source) + ' 静音，peak ' + (v && v.peak) + ')')
+    },
+  },
   timeoutMs: 180000,
   isConcurrencySafe: () => false,
   async execute(args) {
