@@ -847,9 +847,33 @@ function send(res, status, payload) {
   res.end(JSON.stringify(payload, null, 1))
 }
 
+// Loopback is not the same as "a program on this machine". A web page reaches
+// 127.0.0.1 too: an <img> or fetch() on any site fires a GET at this port, and
+// every route here acts on a plain GET. A DNS-rebinding name that resolves to
+// 127.0.0.1 even makes the page same-origin with this daemon, so it can read
+// the answer back. Such requests carry the page's own name in Host and, from
+// any current browser, an Origin and/or Sec-Fetch-Site header. The plugin's own
+// clients (Node fetch in the DSH plugin host, the sibling daemons, the CLIs)
+// send Host 127.0.0.1:<port> and neither of the other two.
+//
+// Sec-Fetch-Site: none is a navigation the user typed or bookmarked, not one a
+// page started, so opening a route in the address bar still works.
+function browserRefusal(req) {
+  const h = req.headers
+  const host = String(h.host || '').toLowerCase()
+  const port = req.socket && req.socket.localPort
+  if (host !== '127.0.0.1:' + port && host !== 'localhost:' + port) return 'unexpected Host header'
+  if (h.origin !== undefined) return 'requests from a web page are not accepted'
+  const site = h['sec-fetch-site']
+  if (site !== undefined && site !== 'none') return 'requests from a web page are not accepted'
+  return null
+}
+
 const server = http.createServer(async (req, res) => {
   const address = req.socket && req.socket.remoteAddress
   if (address !== '127.0.0.1' && address !== '::1' && address !== '::ffff:127.0.0.1') return send(res, 403, { error: 'loopback only' })
+  const refusal = browserRefusal(req)
+  if (refusal) return send(res, 403, { error: 'forbidden: ' + refusal })
   const url = new URL(req.url, 'http://127.0.0.1')
   const q = Object.fromEntries(url.searchParams.entries())
   try {

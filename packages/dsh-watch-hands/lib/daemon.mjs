@@ -48,6 +48,28 @@ function send(res, status, payload) {
   res.end(JSON.stringify(payload, null, 1))
 }
 
+// Loopback is not the same as "a program on this machine". A web page reaches
+// 127.0.0.1 too: an <img> or fetch() on any site fires a GET at this port, and
+// every route here acts on a plain GET. A DNS-rebinding name that resolves to
+// 127.0.0.1 even makes the page same-origin with this daemon, so it can read
+// the answer back. Such requests carry the page's own name in Host and, from
+// any current browser, an Origin and/or Sec-Fetch-Site header. The plugin's own
+// clients (Node fetch in the DSH plugin host, the sibling daemons, the CLIs)
+// send Host 127.0.0.1:<port> and neither of the other two.
+//
+// Sec-Fetch-Site: none is a navigation the user typed or bookmarked, not one a
+// page started, so opening a route in the address bar still works.
+function browserRefusal(req) {
+  const h = req.headers
+  const host = String(h.host || '').toLowerCase()
+  const port = req.socket && req.socket.localPort
+  if (host !== '127.0.0.1:' + port && host !== 'localhost:' + port) return 'unexpected Host header'
+  if (h.origin !== undefined) return 'requests from a web page are not accepted'
+  const site = h['sec-fetch-site']
+  if (site !== undefined && site !== 'none') return 'requests from a web page are not accepted'
+  return null
+}
+
 const enc = (s) => Buffer.from(String(s), 'utf8').toString('base64')
 
 // Is this window one the hands must never drive?
@@ -184,6 +206,17 @@ const server = http.createServer(async (req, res) => {
     // Deliberately no hint about whether the token was empty or wrong: a client
     // that gets "wrong token" learns a token exists, which is enough to keep
     // trying. One message for every rejection.
+  } else {
+    // Loopback without the token still has to look like a program on this
+    // machine, not a web page (see browserRefusal). A caller that presents the
+    // token passes on that alone: a page has no way to read it. Compare with the
+    // token that already exists, never ensureToken(): a refused request must not
+    // be able to mint one, write config.json or add a log line.
+    const refusal = browserRefusal(req)
+    const have = (cfg.api && cfg.api.token) || ''
+    if (refusal && (!have || String(req.headers['x-dsh-watch-hands-token'] || '') !== have)) {
+      return send(res, 403, { error: 'forbidden: ' + refusal, refused: true })
+    }
   }
 
   // The versioned surface is the same handlers. Stripping the prefix here rather
