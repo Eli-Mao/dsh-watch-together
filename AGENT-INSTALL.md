@@ -39,7 +39,8 @@
 | `ears` | `browser` | 能听，但看番时读不到字幕（字幕靠 9222 那个隔离 Chrome） |
 | `panel` | 任何服务 | 面板里对应按钮显示未安装，其他按钮正常 |
 
-**结论：想完整用就装 meta 包 `dsh-watch-stack`，它依赖全部六个。**
+**结论：想完整用就把六个包都作为 profile 的直接依赖装上（可以写在同一条 `add` 命令里，见第 2 节）。
+不要装 meta 包 `dsh-watch-stack`：它虽然依赖全部六个，装上以后一个都不会被挂载。**
 
 ### 内置 inject（DSH 宿主提供的，用户无需处理）
 
@@ -67,7 +68,7 @@
 
 | 包从哪来 | 命令 | 说明 |
 |---|---|---|
-| **npm（已发布）** | `dsh plugin --profile desktop add dsh-watch-stack` | 一条命令六个全装，**推荐** |
+| **npm（已发布）** | `dsh plugin --profile desktop add dsh-watch-eyes dsh-watch-ears dsh-watch-mouth dsh-watch-browser dsh-watch-hands dsh-watch-panel` | 一条命令六个全装，**推荐** |
 | **npm，只要某几样** | `dsh plugin --profile desktop add dsh-watch-eyes dsh-watch-mouth` | 想省事就别拆 |
 | **本地 tgz** | `dsh plugin --profile desktop add .\\dsh-watch-eyes-0.1.0.tgz` | **六个逐个装，别装 meta** |
 | **本地源码目录** | `dsh plugin --profile desktop add link:D:\\...\\packages\\dsh-watch-eyes` | 六个逐个 link，meta 别 link |
@@ -78,10 +79,15 @@
 
 一般是 `desktop` 或 `web`。DSH 桌面版默认 `desktop`。
 
-**为什么本地装不要 meta**：meta 包的依赖写的是 `workspace:*`（发布时由
+**为什么哪条路都不要装 meta**：DSH 装插件时，只把 profile 的**直接依赖**、
+并且 `package.json` 里声明了 `dsh.bundle` 的包登记进 `dsh.profile.bundles`。
+meta 包没有 `dsh.bundle`（装的时候会看到
+`declares no dsh.bundle — installed as a plain dependency, not a profile layer`），
+它带进来的六个包又只是间接依赖，所以装完重启一个工具都没有。
+本地装还多一个问题：meta 包的依赖写的是 `workspace:*`（发布时由
 `pnpm publish` 改写成真实版本号）。在本地环境里它解析不到工作区，
 pnpm 就会去 registry 找那几个还没发布的包，直接 404。
-所以**本地一律六个单独装**，meta 包只在 npm 那条路上有意义。
+所以**一律六个单独装**（可以写在同一条命令里）。
 
 ### 装完必须重启
 

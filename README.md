@@ -32,8 +32,13 @@ Windows · DeepSeek Harness 插件 · MIT
 ### 方式一：npm（一条命令装全）
 
 ```powershell
-dsh plugin --profile desktop add dsh-watch-stack
+dsh plugin --profile desktop add dsh-watch-eyes dsh-watch-ears dsh-watch-mouth dsh-watch-browser dsh-watch-hands dsh-watch-panel
 ```
+
+六个包都要作为 profile 的直接依赖装上（可以写在同一条命令里）。**不要用 `add dsh-watch-stack` 代替**：
+DSH 只把 profile 的直接依赖、并且声明了 `dsh.bundle` 的包登记成插件，
+`dsh-watch-stack` 自己没有 `dsh.bundle`，它带进来的六个包又只是间接依赖，
+装完重启一个工具都不会有。
 
 只想要其中几个：
 

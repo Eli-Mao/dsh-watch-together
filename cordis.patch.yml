@@ -1,6 +1,7 @@
 # dsh-watch-stack bundle patch.
 #
 # Deliberately empty. Each sibling (eyes, ears, mouth, browser, hands, panel)
-# ships its own patch and gets mounted by the profile composition as it is
-# discovered. Re-inserting them here would mount every daemon twice and the
-# second one would lose the port.
+# ships its own patch and is mounted when it is installed into the profile
+# directly; installing this meta package alone mounts none of them. Re-inserting
+# them here would mount every daemon twice and the second one would lose the
+# port.
