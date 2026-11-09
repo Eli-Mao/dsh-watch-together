@@ -37,9 +37,9 @@ try {
       glm: !!(t.glm && t.glm.apiKey),
       edge: true,
     }
-    const order = t.provider === 'openai'
-      ? ['openai', 'minimax', 'azure', 'glm', 'edge']
-      : ['minimax', 'openai', 'azure', 'glm', 'edge']
+    // Same rule as providerOrder() in lib/tts.mjs: a pinned provider first.
+    const auto = ['minimax', 'openai', 'azure', 'glm', 'edge']
+    const order = auto.includes(t.provider) ? [t.provider, ...auto.filter((k) => k !== t.provider)] : auto
     const willUse = order.find((k) => configured[k]) || 'edge'
     json({
       configuredProvider: t.provider || 'auto',

@@ -34,6 +34,17 @@ const GLM_BYTES_PER_SEC = (GLM_PCM_RATE * GLM_PCM_BITS * GLM_PCM_CHANNELS) / 8
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 
+// The order providers are tried in. 'auto' (or anything unknown) is cost order;
+// a pinned provider (tts.provider: minimax | openai | azure | glm | edge) goes
+// first and the rest follow in that same order. Only minimax and openai used to
+// be honoured, so pinning azure, glm or edge still spoke with minimax whenever a
+// minimax key existed.
+const AUTO_ORDER = ['minimax', 'openai-tts', 'azure', 'glm', 'edge']
+export function providerOrder(preferred) {
+  const pinned = preferred === 'openai' ? 'openai-tts' : preferred
+  return AUTO_ORDER.includes(pinned) ? [pinned, ...AUTO_ORDER.filter((p) => p !== pinned)] : AUTO_ORDER.slice()
+}
+
 // MiniMax accepts seven emotions on speech-2.8-hd (verified against the API).
 // Picking one per line from the text is free and beats a fixed setting: a
 // joke delivered in "sad" reads as broken, and a heavy scene in "happy" is
@@ -666,13 +677,7 @@ export class Speaker {
     // Azure and domestic keyed vendors carry a real neural voice; glm-tts is the
     // current stopgap; Edge is last because its free endpoint now refuses most
     // handshakes.
-    const preferred = this.tts.provider || 'auto'
-    const order =
-      preferred === 'minimax'
-        ? ['minimax', 'openai-tts', 'azure', 'glm', 'edge']
-        : preferred === 'openai'
-          ? ['openai-tts', 'minimax', 'azure', 'glm', 'edge']
-          : ['minimax', 'openai-tts', 'azure', 'glm', 'edge']
+    const order = providerOrder(this.tts.provider || 'auto')
     const errors = []
     for (const provider of order) {
       // A plain network reset is common on this endpoint and costs nothing to
