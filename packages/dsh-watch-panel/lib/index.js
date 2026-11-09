@@ -9,12 +9,16 @@
 // 401s any request without a browser session cookie. Because matching prefers
 // the longest prefix, a plugin under /api/<name> never gets a turn. A distinct
 // prefix sidesteps that handshake entirely.
+//
+// Sidestepping it also skipped the admission that came with it, which
+// admitRequest below puts back.
 import { execFile } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 import { homedir } from 'node:os'
 import { createRequire } from 'node:module'
+import { STATUS_CODES } from 'node:http'
 
 export const name = 'dsh-watch-panel'
 export const inject = ['webServer']
@@ -172,6 +176,113 @@ function json(res, code, obj) {
   res.end(JSON.stringify(obj))
 }
 
+// Who may call these routes.
+//
+// The web server dispatches by longest prefix and admits nothing itself: the
+// browser-session check belongs to the connection service, inside its own /api
+// route. A route under /dsh-watch is therefore reached by anything that reaches
+// the web server, a web page in the user's browser included (an <img> GET, or a
+// fetch through a DNS-rebinding name), and every route here starts or drives
+// something on a plain GET.
+//
+// So ask the connection service for the verdict it gives /api: its Host/Origin
+// fence plus the browser session cookie, which the panel's own same-origin
+// fetches already carry. requestRejection is the call meant for "another Web
+// route"; admit is the same check in the shape some releases expose. If the
+// host has no connection service, fall back to the structural part of that
+// fence: a loopback Host, no cross-site Fetch-Metadata, and an Origin or Referer
+// naming the same authority as the Host. The desktop app relays its
+// dsh-app://app page to the loopback server and leaves that Referer behind,
+// without the browser markers, so that one is accepted as it is.
+//
+// A failing check refuses (503), it never waves the request through.
+//
+// Same approach as dsh-see-now's src/settings-trust.js (Apache-2.0); the code
+// here is this plugin's own.
+//
+// URL keeps the brackets on an IPv6 hostname (new URL('http://[::1]:80').hostname
+// is '[::1]'), so that is the form to match.
+const LOOPBACK_HOSTS = new Set(['127.0.0.1', 'localhost', '[::1]'])
+
+function connectionOf(ctx) {
+  try {
+    return typeof ctx.get === 'function' ? ctx.get('connection') : undefined
+  } catch {
+    return undefined
+  }
+}
+
+function sameAuthority(value, host) {
+  let u
+  try {
+    u = new URL(value)
+  } catch {
+    return false
+  }
+  if (u.protocol !== 'http:' && u.protocol !== 'https:') return false
+  try {
+    return new URL(u.protocol + '//' + host).host === u.host
+  } catch {
+    return false
+  }
+}
+
+function isDesktopRelay(value) {
+  try {
+    const u = new URL(value)
+    return u.protocol === 'dsh-app:' && u.hostname === 'app' && u.port === '' && u.username === '' && u.password === ''
+  } catch {
+    return false
+  }
+}
+
+function structuralRejection(req) {
+  const h = req.headers || {}
+  const host = String(h.host || '').trim().toLowerCase()
+  if (host === '' || /[@/\\?#\s]/u.test(host)) return 403
+  let hostname
+  try {
+    hostname = new URL('http://' + host).hostname
+  } catch {
+    return 403
+  }
+  if (!LOOPBACK_HOSTS.has(hostname)) return 403
+  if (String(h['sec-fetch-site'] || '').toLowerCase() === 'cross-site') return 403
+  for (const name of ['origin', 'referer']) {
+    const v = h[name]
+    if (typeof v !== 'string' || v.trim() === '') continue
+    if (name === 'referer' && isDesktopRelay(v)) {
+      if (h.origin !== undefined || h['sec-fetch-site'] !== undefined) return 403
+      continue
+    }
+    if (!sameAuthority(v.trim(), host)) return 403
+  }
+  return undefined
+}
+
+// Returns the HTTP status to refuse with, or undefined to let the request in.
+function admitRequest(req, connection) {
+  try {
+    if (connection && typeof connection.requestRejection === 'function') {
+      return connection.requestRejection(req) || undefined
+    }
+    if (connection && typeof connection.admit === 'function') {
+      const admission = connection.admit(req)
+      return (admission && typeof admission === 'object' && admission.rejection) || undefined
+    }
+  } catch {
+    return 503
+  }
+  return structuralRejection(req)
+}
+
+// The body names the refusal the status already gives: 401 is the missing
+// session, 503 a check that failed, anything else what HTTP calls it.
+function refusalText(code) {
+  if (code === 401) return 'not signed in'
+  return String(STATUS_CODES[code] || 'refused').toLowerCase()
+}
+
 async function handle(req, res, sub, q) {
   if (sub === '/status') return json(res, 200, await allStatus())
 
@@ -298,6 +409,8 @@ export function apply(ctx) {
         sub = u.pathname.slice(BASE.length).replace(/\/+$/u, '') || '/'
         q = Object.fromEntries(u.searchParams.entries())
       } catch { /* keep defaults */ }
+      const refused = admitRequest(req, connectionOf(ctx))
+      if (refused) return json(res, refused, { ok: false, error: refusalText(refused) })
       if (req.method !== 'GET') return json(res, 405, { ok: false, error: 'method not allowed' })
       try {
         return await handle(req, res, sub, q)
