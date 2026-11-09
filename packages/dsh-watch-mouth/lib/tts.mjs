@@ -53,6 +53,20 @@ export function pickEmotion(text, fallback = 'neutral') {
   return fallback
 }
 
+// SiliconFlow names its preset voices per model: "FunAudioLLM/CosyVoice2-0.5B:anna",
+// not "anna" (https://docs.siliconflow.cn/cn/userguide/capabilities/text-to-speech).
+// Configs written with the bare name, and users who type just the name, get the
+// configured model put in front here. Other vendors, and ids that already carry
+// a colon (prefixed presets, uploaded "speech:..." voices), go through as they are.
+function openaiVoice(voice, base, model) {
+  const v = String(voice || 'anna')
+  if (v.includes(':')) return v
+  let host = ''
+  try { host = new URL(base).hostname.toLowerCase() } catch { /* not a URL: leave the voice alone */ }
+  const sf = /(^|\.)siliconflow\.(cn|com)$/.test(host)
+  return sf ? model + ':' + v : v
+}
+
 export class Speaker {
   constructor(voice, prosody, opts = {}) {
     this.voice = voice || 'zh-CN-XiaoyiNeural'
@@ -449,6 +463,7 @@ export class Speaker {
     if (!o.apiKey) throw new Error('openai-tts: no apiKey')
     const base = String(o.baseUrl || 'https://api.siliconflow.cn/v1').replace(/\/+$/, '')
     const fmt = o.format || 'mp3'
+    const model = o.model || 'FunAudioLLM/CosyVoice2-0.5B'
     const res = await fetch(base + '/audio/speech', {
       method: 'POST',
       headers: {
@@ -456,9 +471,9 @@ export class Speaker {
         authorization: 'Bearer ' + o.apiKey,
       },
       body: JSON.stringify({
-        model: o.model || 'FunAudioLLM/CosyVoice2-0.5B',
+        model,
         input: text,
-        voice: o.voice || 'anna',
+        voice: openaiVoice(o.voice, base, model),
         speed: o.speed ?? 1.1,
         response_format: fmt,
       }),

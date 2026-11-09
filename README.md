@@ -105,6 +105,9 @@ npx -y -p dsh-watch-mouth mouth config set tts.openai.apiKey 你的key
 npx -y -p dsh-watch-mouth mouth config set tts.openai.voice 音色名
 ```
 
+SiliconFlow 的预置音色要带模型前缀，例如 `FunAudioLLM/CosyVoice2-0.5B:anna`；
+只写 `anna` 也可以，baseUrl 是 SiliconFlow 时插件会用 `tts.openai.model` 自动补上。
+
 也可以填 MiniMax、Azure，或者用环境变量
 `MINIMAX_API_KEY` / `SILICONFLOW_API_KEY` / `AZURE_SPEECH_KEY`。
 

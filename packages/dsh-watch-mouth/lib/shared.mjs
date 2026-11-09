@@ -88,7 +88,7 @@ export function defaultConfig() {
       // vendor that speaks /v1/audio/speech works; the defaults below are only
       // examples, not a preference.
       baseUrlExample: 'https://api.siliconflow.cn/v1',
-      voiceExample: 'anna',
+      voiceExample: 'FunAudioLLM/CosyVoice2-0.5B:anna',
       model: 'glm-tts',
       voice: 'female',
       speed: 1.1,
@@ -114,7 +114,8 @@ export function defaultConfig() {
         apiKey: '',
         baseUrl: 'https://api.siliconflow.cn/v1',
         model: 'FunAudioLLM/CosyVoice2-0.5B',
-        voice: 'anna',
+        // SiliconFlow preset voices are named per model ("<model>:<voice>").
+        voice: 'FunAudioLLM/CosyVoice2-0.5B:anna',
         speed: 1.1,
         format: 'mp3',
       },
